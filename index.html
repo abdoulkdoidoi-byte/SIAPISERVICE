@@ -39,7 +39,6 @@ input{padding:12px;margin:5px 0;width:90%;max-width:300px;border-radius:8px;bord
     <div class="prog-bg"><div id="progressBar" class="prog-bar"></div></div>
     <p id="status" style="font-size:12px;margin-top:15px;color:gray;">Chargement...</p>
   </div>
-</div>
 
 <!-- ÉCRAN 2 -->
 <div id="screen2" class="screen">
@@ -48,7 +47,18 @@ input{padding:12px;margin:5px 0;width:90%;max-width:300px;border-radius:8px;bord
   <input id="prenom" placeholder="Prénom">
   <input id="phone" placeholder="Téléphone">
   <input id="pass" type="password" placeholder="Mot de passe">
-  <button onclick="authMe(document.getElementById('nom').value,document.getElementById('prenom').value,document.getElementById('phone').value,document.getElementById('pass').value)">Se connecter</button>
+  <!-- Bouton connexion classique -->
+  <button onclick="authMe(
+    document.getElementById('nom').value,
+    document.getElementById('prenom').value,
+    document.getElementById('phone').value,
+    document.getElementById('pass').value
+  )">Se connecter</button>
+  
+  <!-- Bouton connexion Google -->
+  <button onclick="authGoogle()" style="background:#DB4437; color:white; font-weight:bold; padding:12px; border-radius:8px; margin-top:5px;">
+    Se connecter avec Google
+  </button>
 </div>
 
 <!-- ÉCRAN 3 -->
@@ -127,6 +137,36 @@ function authMe(nom, prenom, phone, pass){
   functions.httpsCallable('createUser')({uid:currentUser.uid, nom, prenom, phone})
     .then(res=>{ alert(res.data.message); document.getElementById('displayName').innerText = nom; show(3); })
     .catch(err=>alert(err.message));
+  // Connexion avec Google
+function authGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider)
+    .then((result) => {
+      const user = result.user;
+      currentUser = { uid: user.uid, nom: user.displayName, phone: user.phoneNumber };
+      
+      // Sauvegarde dans la base Firebase si nouveau
+      db.ref('users/' + currentUser.uid).once('value').then(snap => {
+        if (!snap.exists()) {
+          db.ref('users/' + currentUser.uid).set({
+            nom: user.displayName || "Utilisateur",
+            prenom: "",
+            phone: user.phoneNumber || "",
+            points: 0,
+            money: 0
+          });
+        }
+      });
+
+      document.getElementById('displayName').innerText = user.displayName || "Utilisateur";
+      loadLives();
+      loadUserData();
+      show(3);
+    })
+    .catch((error) => {
+      alert("Erreur connexion Google: " + error.message);
+    });
+}
 }
 
 // --- Actions sécurisées via Functions ---
