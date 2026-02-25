@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIAPiSERVICE Pro</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-functions.js"></script>
+
+<style>
+body{margin:0;font-family:Segoe UI,sans-serif;background:#f2f2f2;overflow:hidden;}
+.screen{display:none;height:100vh;padding:20px;box-sizing:border-box;justify-content:center;align-items:center;text-align:center;flex-direction:column;}
+.active{display:flex;}
+.loader-circle{width:180px;height:180px;border-radius:50%;background:#4CAF50;color:white;display:flex;justify-content:center;align-items:center;font-weight:bold;font-size:20px;box-shadow:0 10px 25px rgba(0,0,0,0.2);transition:0.3s;}
+.ready{animation:pulse 1.5s infinite;cursor:pointer;background:#2196F3;}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.prog-bg{width:220px;height:10px;background:#ddd;border-radius:20px;margin-top:40px;overflow:hidden;}
+.prog-bar{height:100%;width:0%;background:#4CAF50;transition:0.1s;}
+button{padding:12px;border:none;border-radius:8px;background:#4CAF50;color:white;font-weight:bold;margin:5px 0;width:100%;}
+input{padding:12px;margin:5px 0;width:90%;max-width:300px;border-radius:8px;border:1px solid #ccc;}
+.appbtn{background:#334155;color:white;width:100%;padding:12px;border-radius:8px;margin:0; transition: transform 0.2s, box-shadow 0.3s;}
+.appbtn:hover{transform: translateY(-3px) scale(1.05); box-shadow:0 6px 15px rgba(0,0,0,0.4);}
+.contentBtn{background:#2196F3; border-radius:10px; font-weight:bold; padding:10px; color:white; transition: transform 0.2s, box-shadow 0.3s;}
+.contentBtn:hover{transform: translateY(-3px) scale(1.05); box-shadow:0 6px 15px rgba(0,0,0,0.4);}
+.miniScreen{display:flex; flex-direction:column; align-items:center; gap:5px; transition: transform 0.3s;}
+.miniScreen:hover{transform: scale(1.08);}
+</style>
+</head>
+<body>
+
+<!-- ÉCRAN 1 -->
+<div id="screen1" class="screen active">
+  <div>
+    <div id="bigBtn" class="loader-circle">Bienvenue ! Gagnez des points et convertissez-les en argent réel</div>
+    <div class="prog-bg"><div id="progressBar" class="prog-bar"></div></div>
+    <p id="status" style="font-size:12px;margin-top:15px;color:gray;">Chargement...</p>
+  </div>
+</div>
+
+<!-- ÉCRAN 2 -->
+<div id="screen2" class="screen">
+  <h2>Identification</h2>
+  <input id="nom" placeholder="Nom">
+  <input id="prenom" placeholder="Prénom">
+  <input id="phone" placeholder="Téléphone">
+  <input id="pass" type="password" placeholder="Mot de passe">
+  <button onclick="authMe(document.getElementById('nom').value,document.getElementById('prenom').value,document.getElementById('phone').value,document.getElementById('pass').value)">Se connecter</button>
+</div>
+
+<!-- ÉCRAN 3 -->
+<div id="screen3" class="screen">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; padding:10px 20px; background:linear-gradient(90deg,#4CAF50,#2196F3); color:white; box-shadow:0 4px 8px rgba(0,0,0,0.2); position:absolute; top:0; left:0; z-index:1000; border-bottom-left-radius:15px; border-bottom-right-radius:15px;">
+    <div style="display:flex; flex-direction:column; align-items:flex-start;">
+      <div style="font-weight:bold; font-size:18px;">💰 <span id="displayPoints">0</span> pts</div>
+      <div style="font-size:12px;">Nom : <b id="displayName">Utilisateur</b></div>
+      <div style="margin-top:5px;">
+        <button onclick="convertPoints()" style="padding:5px 10px; font-size:12px; border-radius:8px; background:white; color:#4CAF50; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.3);">Convertir en argent</button> 💵 <span id="displayMoney">0 F</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="liveContainer" style="display:flex; flex-wrap:wrap; justify-content:center; gap:15px; margin-top:90px;">
+    <div class="miniScreen" id="screenLive1"></div>
+    <div class="miniScreen" id="screenLive2"></div>
+    <div class="miniScreen" id="screenLive3"></div>
+    <div class="miniScreen" id="screenLive4"></div>
+  </div>
+
+  <div class="app-grid" style="display:grid; grid-template-columns:repeat(5,1fr); gap:15px; position:absolute; bottom:20px; width:90%; max-width:500px; left:50%; transform:translateX(-50%);">
+    <button class="appbtn" onclick="watchVideo(10)">Vidéos</button>
+    <button class="appbtn" onclick="watchFilm(20)">Films</button>
+    <button class="appbtn" onclick="followLive(50)">Live</button>
+    <button class="appbtn" onclick="share()">Partager App</button>
+    <button class="appbtn" onclick="downloadVideo()">Télécharger Vidéo</button>
+    <button class="appbtn" onclick="downloadFilm()">Télécharger Film</button>
+    <button class="appbtn" onclick="followLive(50)">Suivre Live</button>
+    <button class="appbtn" onclick="shareLive()">Partager Live</button>
+    <button class="appbtn" onclick="openApp('https://www.tiktok.com')">TikTok</button>
+    <button class="appbtn" style="background:#FF9800;" onclick="retrait('Orange Money')">Retrait Orange Money</button>
+    <button class="appbtn" style="background:#4CAF50;" onclick="retrait('Mobile Money')">Retrait Mobile Money</button>
+  </div>
+</div>
+
+<script>
+// --- Front-end Firebase Initialization ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCpdkexwpCmt8qBVW_M9A8RrHor7gw51kQ",
+  authDomain: "siapi-bfca4.firebaseapp.com",
+  databaseURL: "https://siapi-bfca4-default-rtdb.firebaseio.com",
+  projectId: "siapi-bfca4",
+  storageBucket: "siapi-bfca4.firebasestorage.app",
+  messagingSenderId: "267573478948",
+  appId: "1:267573478948:web:42e0dc695ad8994ca13ab1",
+  measurementId: "G-94RPZ0K2WG"
+};
+firebase.initializeApp(firebaseConfig);
+const functions = firebase.functions();
+let currentUser = null;
+
+// --- Écran de chargement ---
+window.onload = function() {
+  let w = 0;
+  const bar = document.getElementById('progressBar');
+  const btn = document.getElementById('bigBtn');
+  const status = document.getElementById('status');
+  const interval = setInterval(() => {
+    w += 5;
+    bar.style.width = w + '%';
+    if (w >= 100) {
+      clearInterval(interval);
+      status.innerText = "Prêt !";
+      btn.classList.add('ready');
+      btn.onclick = () => show(2);
+    }
+  }, 50);
+};
+function show(n){ document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('screen'+n).classList.add('active'); }
+
+// --- Auth utilisateur ---
+function authMe(nom, prenom, phone, pass){
+  if(!nom||!prenom||!phone||!pass) return alert("Remplir tous les champs");
+  currentUser = { uid: phone.replace(/\D/g,''), nom, prenom, phone };
+  functions.httpsCallable('createUser')({uid:currentUser.uid, nom, prenom, phone})
+    .then(res=>{ alert(res.data.message); document.getElementById('displayName').innerText = nom; show(3); })
+    .catch(err=>alert(err.message));
+}
+
+// --- Actions sécurisées via Functions ---
+function convertPoints(){ if(!currentUser) return; functions.httpsCallable('convertPoints')({uid:currentUser.uid}).then(res=>alert(res.data.message)); }
+function retrait(type){ if(!currentUser) return; functions.httpsCallable('retrait')({uid:currentUser.uid,type}).then(res=>alert(res.data.message)); }
+function watchVideo(dur){ if(!currentUser) return; functions.httpsCallable('watchVideo')({uid:currentUser.uid,duration:dur}); }
+function watchFilm(dur){ if(!currentUser) return; functions.httpsCallable('watchFilm')({uid:currentUser.uid,duration:dur}); }
+function followLive(p=50){ if(!currentUser) return; functions.httpsCallable('followLive')({uid:currentUser.uid,points:p}); }
+function share(){ if(!currentUser) return; functions.httpsCallable('share')({uid:currentUser.uid}); }
+function shareLive(){ if(!currentUser) return; functions.httpsCallable('shareLive')({uid:currentUser.uid}); }
+function downloadVideo(){ if(!currentUser) return; functions.httpsCallable('downloadVideo')({uid:currentUser.uid}); }
+function downloadFilm(){ if(!currentUser) return; functions.httpsCallable('downloadFilm')({uid:currentUser.uid}); }
+function openApp(url){ window.open(url,"_blank"); }
+</script>
+
+</body>
+  </html>
