@@ -94,9 +94,8 @@ input{padding:12px;margin:5px 0;width:90%;max-width:300px;border-radius:8px;bord
     <button class="appbtn" style="background:#4CAF50;" onclick="retrait('Mobile Money')">Retrait Mobile Money</button>
   </div>
 </div>
-
 <script>
-// --- Front-end Firebase Initialization ---
+// --- Firebase Init ---
 const firebaseConfig = {
   apiKey: "AIzaSyCpdkexwpCmt8qBVW_M9A8RrHor7gw51kQ",
   authDomain: "siapi-bfca4.firebaseapp.com",
@@ -107,16 +106,21 @@ const firebaseConfig = {
   appId: "1:267573478948:web:42e0dc695ad8994ca13ab1",
   measurementId: "G-94RPZ0K2WG"
 };
+
 firebase.initializeApp(firebaseConfig);
+
 const functions = firebase.functions();
+const db = firebase.database(); // ✅ AJOUT IMPORTANT
+
 let currentUser = null;
 
-// --- Écran de chargement ---
+// --- Écran chargement ---
 window.onload = function() {
   let w = 0;
   const bar = document.getElementById('progressBar');
   const btn = document.getElementById('bigBtn');
   const status = document.getElementById('status');
+
   const interval = setInterval(() => {
     w += 5;
     bar.style.width = w + '%';
@@ -128,59 +132,109 @@ window.onload = function() {
     }
   }, 50);
 };
-function show(n){ document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('screen'+n).classList.add('active'); }
 
-// --- Auth utilisateur ---
+function show(n){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen'+n).classList.add('active');
+}
+
+// --- Connexion classique ---
 function authMe(nom, prenom, phone, pass){
-  if(!nom||!prenom||!phone||!pass) return alert("Remplir tous les champs");
+  if(!nom || !prenom || !phone || !pass){
+    alert("Remplir tous les champs");
+    return;
+  }
+
   currentUser = { uid: phone.replace(/\D/g,''), nom, prenom, phone };
-  functions.httpsCallable('createUser')({uid:currentUser.uid, nom, prenom, phone})
-    .then(res=>{ alert(res.data.message); document.getElementById('displayName').innerText = nom; show(3); })
-    .catch(err=>alert(err.message));
-  // Connexion avec Google
+
+  functions.httpsCallable('createUser')({
+    uid: currentUser.uid,
+    nom,
+    prenom,
+    phone
+  })
+  .then(res=>{
+    alert(res.data.message);
+    document.getElementById('displayName').innerText = nom;
+    show(3);
+  })
+  .catch(err=>alert(err.message));
+}
+
+// --- Connexion Google ---
 function authGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
+
   firebase.auth().signInWithPopup(provider)
     .then((result) => {
       const user = result.user;
-      currentUser = { uid: user.uid, nom: user.displayName, phone: user.phoneNumber };
-      
-      // Sauvegarde dans la base Firebase si nouveau
-      db.ref('users/' + currentUser.uid).once('value').then(snap => {
-        if (!snap.exists()) {
-          db.ref('users/' + currentUser.uid).set({
-            nom: user.displayName || "Utilisateur",
-            prenom: "",
-            phone: user.phoneNumber || "",
-            points: 0,
-            money: 0
-          });
-        }
-      });
 
-      document.getElementById('displayName').innerText = user.displayName || "Utilisateur";
-      loadLives();
-      loadUserData();
+      currentUser = {
+        uid: user.uid,
+        nom: user.displayName || "Utilisateur",
+        phone: user.phoneNumber || ""
+      };
+
+      document.getElementById('displayName').innerText = currentUser.nom;
+
       show(3);
     })
     .catch((error) => {
       alert("Erreur connexion Google: " + error.message);
     });
 }
+
+// --- Actions sécurisées ---
+function convertPoints(){
+  if(!currentUser) return;
+  functions.httpsCallable('convertPoints')({uid:currentUser.uid})
+    .then(res=>alert(res.data.message));
 }
 
-// --- Actions sécurisées via Functions ---
-function convertPoints(){ if(!currentUser) return; functions.httpsCallable('convertPoints')({uid:currentUser.uid}).then(res=>alert(res.data.message)); }
-function retrait(type){ if(!currentUser) return; functions.httpsCallable('retrait')({uid:currentUser.uid,type}).then(res=>alert(res.data.message)); }
-function watchVideo(dur){ if(!currentUser) return; functions.httpsCallable('watchVideo')({uid:currentUser.uid,duration:dur}); }
-function watchFilm(dur){ if(!currentUser) return; functions.httpsCallable('watchFilm')({uid:currentUser.uid,duration:dur}); }
-function followLive(p=50){ if(!currentUser) return; functions.httpsCallable('followLive')({uid:currentUser.uid,points:p}); }
-function share(){ if(!currentUser) return; functions.httpsCallable('share')({uid:currentUser.uid}); }
-function shareLive(){ if(!currentUser) return; functions.httpsCallable('shareLive')({uid:currentUser.uid}); }
-function downloadVideo(){ if(!currentUser) return; functions.httpsCallable('downloadVideo')({uid:currentUser.uid}); }
-function downloadFilm(){ if(!currentUser) return; functions.httpsCallable('downloadFilm')({uid:currentUser.uid}); }
-function openApp(url){ window.open(url,"_blank"); }
-</script>
+function retrait(type){
+  if(!currentUser) return;
+  functions.httpsCallable('retrait')({uid:currentUser.uid,type})
+    .then(res=>alert(res.data.message));
+}
 
+function watchVideo(dur){
+  if(!currentUser) return;
+  functions.httpsCallable('watchVideo')({uid:currentUser.uid,duration:dur});
+}
+
+function watchFilm(dur){
+  if(!currentUser) return;
+  functions.httpsCallable('watchFilm')({uid:currentUser.uid,duration:dur});
+}
+
+function followLive(p=50){
+  if(!currentUser) return;
+  functions.httpsCallable('followLive')({uid:currentUser.uid,points:p});
+}
+
+function share(){
+  if(!currentUser) return;
+  functions.httpsCallable('share')({uid:currentUser.uid});
+}
+
+function shareLive(){
+  if(!currentUser) return;
+  functions.httpsCallable('shareLive')({uid:currentUser.uid});
+}
+
+function downloadVideo(){
+  if(!currentUser) return;
+  functions.httpsCallable('downloadVideo')({uid:currentUser.uid});
+}
+
+function downloadFilm(){
+  if(!currentUser) return;
+  functions.httpsCallable('downloadFilm')({uid:currentUser.uid});
+}
+
+function openApp(url){
+  window.open(url,"_blank");
+}
+  </script>
 </body>
   </html>
